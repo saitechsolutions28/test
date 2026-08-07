@@ -42,3 +42,14 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Express endpoint in server.js
+app.get('/api/users', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT name, email FROM users;');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Database Error:', err.message);
+    res.status(500).json({ error: 'Database query failed', details: err.message });
+  }
+});
