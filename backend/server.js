@@ -5,8 +5,14 @@ require("dotenv").config();
 
 const app = express();
 
-app.use(cors());
 app.use(express.json());
+
+app.use(
+  cors({
+    origin: "https://achudhaloans.in/",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  })
+);
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -19,39 +25,122 @@ const pool = new Pool({
   },
 });
 
-// API KEY
-const API_KEY = process.env.API_KEY;
+// Test Database
+pool.connect()
+  .then(() => console.log("✅ PostgreSQL Connected"))
+  .catch((err) => console.log("DB Error :", err));
 
 // Home
 app.get("/", (req, res) => {
-  res.send("Backend Running");
+  res.send("Server Running...");
 });
 
-// Users API
-app.get("/users", async (req, res) => {
+// ---------------- INSERT ----------------
 
-  // Check API Key
-  const apiKey = req.headers["x-api-key"];
-
-  if (apiKey !== API_KEY) {
-    return res.status(401).json({
-      message: "Unauthorized"
-    });
-  }
-
+app.post("/insert", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM users");
-    res.json(result.rows);
+    const { name, email } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "Name and Email required",
+      });
+    }
+
+    await pool.query(
+      "INSERT INTO users(name,email) VALUES($1,$2)",
+      [name, email]
+    );
+
+    res.json({
+      success: true,
+      message: "User Added Successfully",
+    });
   } catch (err) {
-    console.error("Database Error:", err);
+    console.log(err);
 
     res.status(500).json({
-      message: err.message,
-      code: err.code
+      success: false,
+      message: "Insert Failed",
     });
   }
 });
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server Running on Port ${process.env.PORT}`);
+// ---------------- UPDATE ----------------
+
+app.put("/update/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { name, email } = req.body;
+
+    if (!id || !name || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields required",
+      });
+    }
+
+    const result = await pool.query(
+      "UPDATE users SET name=$1,email=$2 WHERE id=$3",
+      [name, email, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User Not Found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "User Updated",
+    });
+  } catch (err) {
+    console.log(err);
+
+    res.status(500).json({
+      success: false,
+      message: "Update Failed",
+    });
+  }
+});
+
+// ---------------- DELETE ----------------
+
+app.delete("/delete/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const result = await pool.query(
+      "DELETE FROM users WHERE id=$1",
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User Not Found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "User Deleted",
+    });
+  } catch (err) {
+    console.log(err);
+
+    res.status(500).json({
+      success: false,
+      message: "Delete Failed",
+    });
+  }
+});
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server Running on Port ${PORT}`);
 });
