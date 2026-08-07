@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-require('dotenv').config();
+require('dotenv').config(); // Loads environment variables from .env file
 
 const app = express();
 
@@ -12,43 +12,42 @@ app.use(cors());
 app.use(express.json());
 
 // ==========================================
-// 2. Database Connection (Supabase PostgreSQL)
+// 2. Database Connection using process.env
 // ==========================================
 const pool = new Pool({
-  host: process.env.DB_HOST || 'aws-0-ap-northeast-2.pooler.supabase.com',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'postgres',
-  user: process.env.DB_USER || 'postgres.gefvwnefgnarsrkzeicc',
-  password: process.env.DB_PASSWORD || 'TRXizw3wERx2Yk1P',
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT),
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
   ssl: {
-    rejectUnauthorized: false // Required for Supabase SSL connection
+    rejectUnauthorized: false // Required for Supabase pooler connections
   }
 });
 
-// Test Database Connection on Startup
+// Verify connection on startup
 pool.connect((err, client, release) => {
   if (err) {
-    return console.error('Error acquiring client', err.stack);
+    console.error('❌ Database connection failed:', err.message);
+  } else {
+    console.log('✅ Connected to Supabase PostgreSQL database via .env variables!');
+    release();
   }
-  console.log('Successfully connected to Supabase PostgreSQL database!');
-  release();
 });
 
 // ==========================================
 // 3. API Routes
 // ==========================================
 
-// Root / Health-check route
+// Health Check
 app.get('/', (req, res) => {
   res.send('API Server is running successfully!');
 });
 
-// GET Endpoint: Fetch name & email from users table
+// GET: Fetch name and email from users table
 app.get('/api/users', async (req, res) => {
   try {
-    const query = 'SELECT name, email FROM users;';
-    const { rows } = await pool.query(query);
-    
+    const { rows } = await pool.query('SELECT name, email FROM users;');
     res.status(200).json(rows);
   } catch (err) {
     console.error('Database Query Error:', err.message);
@@ -59,12 +58,12 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// POST Endpoint: Optional route to insert new users
+// POST: Add a new user
 app.post('/api/users', async (req, res) => {
   const { name, email } = req.body;
 
   if (!name || !email) {
-    return res.status(400).json({ error: 'Name and email are required fields.' });
+    return res.status(400).json({ error: 'Name and email are required.' });
   }
 
   try {
@@ -78,14 +77,14 @@ app.post('/api/users', async (req, res) => {
   } catch (err) {
     console.error('Database Insert Error:', err.message);
     res.status(500).json({ 
-      error: 'Failed to insert user into database', 
+      error: 'Failed to insert user', 
       details: err.message 
     });
   }
 });
 
 // ==========================================
-// 4. Server Initialization
+// 4. Server Listener
 // ==========================================
 const PORT = process.env.PORT || 5000;
 
