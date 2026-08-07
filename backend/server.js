@@ -5,6 +5,14 @@ require("dotenv").config();
 
 const app = express();
 
+DB_HOST=db.gefvwnefgnarsrkzeicc.supabase.co
+DB_PORT=5432
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASSWORD=TRXizw3wERx2Yk1P
+
+PORT=5000
+
 app.use(cors());
 app.use(express.json());
 
